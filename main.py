@@ -144,7 +144,17 @@ def convert_jpegs_to_pdf(folder_path):
             date_match = date_regex.search(text)
             if date_match:
                 date_str = date_match.group(0)
-                base_name = date_str
+                if '.' in date_str:
+                    parts = date_str.split('.')
+                elif '-' in date_str:
+                    parts = date_str.split('-')
+                elif '/' in date_str:
+                    parts = date_str.split('/')
+                else:
+                    parts = date_str.split()
+                # date format output mm.dd.yyyy
+                if len(parts) == 3:
+                    base_name = f"{parts[1]}.{parts[0]}.{parts[2]}"
             else:
                 base_name = os.path.splitext(file)[0]
                 print(f"No date found in {file}, using file name as base")
