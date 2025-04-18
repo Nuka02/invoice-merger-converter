@@ -18,30 +18,64 @@ poppler_path = None  # Set this to your poppler bin path if necessary
 # Function for PDF files (existing functionality)
 ##############################
 
+# def extract_invoice_number_from_pdf(pdf_path):
+#     """
+#     Converts the PDF to image(s) and uses OCR to extract text.
+#     Searches for the invoice number in the format "RE-XXXX-XX" where X is a digit.
+#     Returns the first found invoice number or None if not found.
+#     """
+#     invoice_number = None
+#     # Regex pattern matching "RE-" then 4 digits, a hyphen, and 2 digits.
+#     invoice_regex = re.compile(r"RE-\d{4}-\d{2}")
+#
+#     try:
+#         # Convert the PDF file pages to images; assuming each PDF is a scanned document.
+#         if poppler_path:
+#             pages = convert_from_path(pdf_path, poppler_path=poppler_path)
+#         else:
+#             pages = convert_from_path(pdf_path)
+#
+#         # Iterate over pages in the PDF (in case the invoice number might appear on any page)
+#         for page in pages:
+#             text = pytesseract.image_to_string(page)
+#             match = invoice_regex.search(text)
+#             if match:
+#                 invoice_number = match.group(0)
+#                 break
+#     except Exception as e:
+#         print(f"Error processing {pdf_path}: {e}")
+#     return invoice_number
+
+
 def extract_invoice_number_from_pdf(pdf_path):
     """
     Converts the PDF to image(s) and uses OCR to extract text.
-    Searches for the invoice number in the format "RE-XXXX-XX" where X is a digit.
+    First tries to find "RE-XXXX-XX". If not found, looks for "XXXX-XX".
     Returns the first found invoice number or None if not found.
     """
     invoice_number = None
-    # Regex pattern matching "RE-" then 4 digits, a hyphen, and 2 digits.
-    invoice_regex = re.compile(r"RE-\d{4}-\d{2}")
+    # 1) Strict: RE-1234-56
+    strict_re = re.compile(r"RE-\d{4}-\d{2}")
+    # 2) Loose fallback: 1234-56 (but not part of a longer digit sequence)
+    loose_re = re.compile(r"\b\d{4}-\d{2}\b")
 
     try:
-        # Convert the PDF file pages to images; assuming each PDF is a scanned document.
-        if poppler_path:
-            pages = convert_from_path(pdf_path, poppler_path=poppler_path)
-        else:
-            pages = convert_from_path(pdf_path)
-
-        # Iterate over pages in the PDF (in case the invoice number might appear on any page)
+        pages = convert_from_path(pdf_path, poppler_path=poppler_path) if poppler_path else convert_from_path(pdf_path)
         for page in pages:
             text = pytesseract.image_to_string(page)
-            match = invoice_regex.search(text)
+
+            # 1) Try strict first
+            match = strict_re.search(text)
             if match:
                 invoice_number = match.group(0)
                 break
+
+            # 2) Fallback: bare digits
+            match = loose_re.search(text)
+            if match:
+                invoice_number = match.group(0)
+                break
+
     except Exception as e:
         print(f"Error processing {pdf_path}: {e}")
     return invoice_number
